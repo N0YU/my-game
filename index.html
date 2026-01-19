@@ -89,6 +89,7 @@ const Core = {
 // --- ITO SYSTEM (100 Themes) ---
 const Ito = {
     myNum: 0,
+    drawCount: 0,
     themes: [
         {n:"コンビニ商品", s:"1:安い ↔ 100:高い"}, {n:"なりたい職業", s:"1:不人気 ↔ 100:人気"}, {n:"武器の強さ", s:"1:弱い ↔ 100:強い"}, {n:"給食の人気メニュー", s:"1:不人気 ↔ 100:人気"}, {n:"怖いもの", s:"1:怖くない ↔ 100:怖い"}, {n:"モテる趣味", s:"1:モテない ↔ 100:モテる"}, {n:"最強の調味料", s:"1:弱い ↔ 100:強い"}, {n:"歴史上の人物", s:"1:無名 ↔ 100:偉大"}, {n:"無人島持参物", s:"1:不要 ↔ 100:必要"}, {n:"痛いケガ", s:"1:平気 ↔ 100:激痛"},
         {n:"カッコいい苗字", s:"1:平凡 ↔ 100:最高"}, {n:"欲しい超能力", s:"1:地味 ↔ 100:最強"}, {n:"デート場所", s:"1:最悪 ↔ 100:最高"}, {n:"最強の動物", s:"1:弱い ↔ 100:強い"}, {n:"人生で大切なもの", s:"1:不要 ↔ 100:必須"}, {n:"嫌いな食べ物", s:"1:平気 ↔ 100:無理"}, {n:"泣ける映画", s:"1:笑える ↔ 100:号泣"}, {n:"住みたい場所", s:"1:嫌 ↔ 100:理想"}, {n:"カッコいい英単語", s:"1:ダサい ↔ 100:最高"}, {n:"一発芸の面白さ", s:"1:寒い ↔ 100:爆笑"},
@@ -111,6 +112,7 @@ const Ito = {
                 </div>
                 <div id="it-field" style="text-align:center; min-height:80px;"></div>
                 <div id="it-msg" style="text-align:center; font-weight:bold; margin:10px;"></div>
+                <div id="it-notice" style="text-align:center; color:red; font-size:0.8rem; height:20px; margin-bottom:10px;"></div>
                 <div class="hand-area"><div id="it-mynum" class="num-view">?</div>HOLD</div>
                 <div id="it-control">
                     <button id="it-draw" onclick="Ito.draw()" class="btn btn-blue">数字を引く</button>
@@ -129,6 +131,14 @@ const Ito = {
             } else {
                 document.getElementById('ito-setup').classList.remove('hidden'); document.getElementById('ito-play').classList.add('hidden');
                 document.getElementById('ito-opts').innerHTML = (d.proposals||[]).map((p,i)=>`<button class="btn btn-gray" onclick="Ito.select(${i})">${p.n}</button>`).join('');
+                this.drawCount = 0; // リセット
+            }
+            // 通知の表示
+            const noticeEl = document.getElementById('it-notice');
+            if(d.lastRedraw && d.lastRedraw.user !== "none") {
+                noticeEl.innerText = `⚠️ ${d.lastRedraw.user}が${d.lastRedraw.count}回目の引き直し！`;
+            } else {
+                noticeEl.innerText = "";
             }
             const f = document.getElementById('it-field'); f.innerHTML = "";
             if(d.cards) {
@@ -146,17 +156,22 @@ const Ito = {
     select(i) { db.ref('ito/proposals').once('value', s=>{ const p=s.val(); if(p) db.ref('ito/config').set({theme:p[i].n, scale:p[i].s}); }); },
     draw() { 
         this.myNum = Math.floor(Math.random()*100)+1; 
+        this.drawCount++;
         document.getElementById('it-mynum').innerText = this.myNum; 
         document.getElementById('it-draw').classList.add('hidden'); 
         document.getElementById('it-actions').classList.remove('hidden'); 
+        // 全員に通知
+        if(this.drawCount > 1) {
+            db.ref('ito/lastRedraw').set({user: Core.user, count: this.drawCount});
+        }
     },
     submit() { 
         db.ref('ito/cards').push({num:this.myNum, user:Core.user, ts:Date.now()}); 
+        db.ref('ito/lastRedraw').set({user: "none", count: 0}); // 通知を消す
         document.getElementById('it-actions').classList.add('hidden'); 
     },
     reset() { if(confirm("RESET?")) db.ref('ito').remove(); }
 };
-
 // --- DECRYPTO SYSTEM (Fix V5.5) ---
 const Decrypto = {
     role: "", isJudging: false,
